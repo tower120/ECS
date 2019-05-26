@@ -7,6 +7,8 @@
 #include <typeindex>
 #include <cassert>
 
+#include "type_traits.h"
+
 namespace tower120::ecs::util{
     namespace detail::heterogeneous_array{
         constexpr std::size_t apply_alignment(const std::size_t pos, const std::size_t alignemnt){
@@ -17,20 +19,17 @@ namespace tower120::ecs::util{
             }
         }
 
-        template<int N, typename... Ts>
-        using NthTypeOf = typename std::tuple_element<N, std::tuple<Ts...>>::type;
-
         template <int N, int I /*=0*/, class ...Elements>
         constexpr std::size_t get_begin_(const std::size_t pos = 0){
             if constexpr (I==N){
                 return pos;
             } else {
-                using Element = NthTypeOf<I, Elements...>;
+                using Element = NthType<I, Elements...>;
 
                 std::size_t next_pos = pos + sizeof(Element);
 
                 if constexpr (I < sizeof...(Elements)-1){
-                    using NextElement = NthTypeOf<I+1, Elements...>;
+                    using NextElement = NthType<I+1, Elements...>;
                     next_pos = apply_alignment(next_pos, alignof(NextElement) );
                 }
 
@@ -42,19 +41,24 @@ namespace tower120::ecs::util{
         constexpr std::size_t get_begin(){
             return get_begin_<N, 0, Elements...>();
         }
+
+        template <class ...Elements>
+        static const constexpr std::size_t max_align =  std::max( {alignof(Elements)...} );
     }  // namespace util::heterogeneous_array
 
 
     template <class ...Elements>
-    class heterogeneous_array{
+    class alignas(detail::heterogeneous_array::max_align<Elements...>) heterogeneous_array {
     public:
         using offset_table_t = std::array<std::size_t, sizeof...(Elements)>;
         using typeindex_table_t = std::array<std::type_index, sizeof...(Elements)>;
 
     private:
+        template<int N>
+        using ElementN = NthType<N, Elements...>;
+
         static const constexpr std::size_t last_element_id = sizeof...(Elements)-1;
-        using LastElement = detail::heterogeneous_array::NthTypeOf<last_element_id, Elements...>;
-        static const constexpr std::size_t max_align = std::max( {alignof(Elements)...} );
+        using LastElement = NthType<last_element_id, Elements...>;
 
         template<std::size_t ...I>
         static constexpr offset_table_t get_offset_table(std::index_sequence<I...>){
@@ -75,37 +79,37 @@ namespace tower120::ecs::util{
         static const constexpr std::size_t storage_size =
             detail::heterogeneous_array::apply_alignment(
                 offset_table[last_element_id] + sizeof(LastElement),
-                max_align
+                detail::heterogeneous_array::max_align<Elements...>
             );
 
     private:
         std::byte storage[storage_size];
 
-        template<int I>
-        constexpr void construct() noexcept {
-            using Element = detail::heterogeneous_array::NthTypeOf<I, Elements...>;
-            if constexpr (!std::is_trivially_default_constructible_v<Element>){
-                void* address = &storage[offset_table[I]];
-                new (reinterpret_cast<Element*>(address)) Element ();
-            }
+        template<class Closure, std::size_t ...I>
+        void foreach_element_(Closure&& closure, std::index_sequence<I...>){
+            (closure(std::integral_constant<std::size_t, I>{}), ...);
         }
-
-        template<std::size_t ...I>
-        constexpr void default_construct(std::index_sequence<I...>) noexcept {
-            (construct<I>(), ...);
-        }
-
-        void foreach_container(){
-
+        template<class Closure>
+        void foreach_element(Closure &&closure){
+            foreach_element_(std::forward<Closure>(closure), std::index_sequence_for<Elements...>{});
         }
 
     public:
         constexpr heterogeneous_array() noexcept
         {
-            default_construct(std::index_sequence_for<Elements...>{});
+            foreach_element([&](auto I) {
+                using Element = ElementN<I.value>;
+                if constexpr (!std::is_trivially_default_constructible_v<Element>) {
+                    void *address = &storage[offset_table[I]];
+                    new(reinterpret_cast<Element *>(address)) Element();
+                }
+            });
         }
 
         // TODO : non-default ctr
+        // TODO : move ctr / copy ctr
+        heterogeneous_array(const heterogeneous_array&) = delete;
+        heterogeneous_array(heterogeneous_array&&) = delete;
 
         template<class T>
         constexpr T& get(std::size_t index){
@@ -115,6 +119,13 @@ namespace tower120::ecs::util{
             void* address = &storage[offset];
             return *reinterpret_cast<T*>(address);
         }
+
+        ~heterogeneous_array(){
+            foreach_element([&](auto I) {
+                using Element = ElementN<I.value>;
+                get<Element>(I.value).~Element();
+            });
+        };
     };
 
 }

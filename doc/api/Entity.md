@@ -4,11 +4,18 @@ public:
     const EntityType type_id;
     
     // very fast, one indirection
-    template<class Container>
-    Container& get() noexcept;
+    // return nullptr if no such Component
+    template<class Component>
+    Component* get_if() noexcept;
     
+    // very fast, one indirection
+    // no Component existence checks
+    template<class Component>
+    Component& get() noexcept;    
+    
+    // ??
     // fast, two indirections    
-    IContainer& get(ContainerType) noexcept;    
+    // IComponent* get(ComponentType) noexcept;    
 }
 ```
 
@@ -16,8 +23,11 @@ public:
 template<class ...Containers>
 class Entity final : IEntity {
 public:
+    static const EntityType type_id;
+    
     // virtually no-op
-    template<class Container>
-    Container& get() noexcept;
+    // Component existence compile time check   
+    template<class Component>
+    Component& get() noexcept;
 }
 ```

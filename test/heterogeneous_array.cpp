@@ -37,6 +37,23 @@ void test_get(){
     REQUIRE(array.get<std::string>(2) == "Hello");
 }
 
+// requires ASAN for testing
+void test_misaligned_address(){
+    struct Position {
+        double x,y;
+    };
+
+    struct Test final{
+        char payload;
+        heterogeneous_array<Position> hp;
+
+        Test(){ (void)payload; }
+    };
+
+    Test test;
+    REQUIRE(sizeof(test) == sizeof(Position) + alignof(Position));
+}
+
 int main(){
     fuzzy_test_tuple<bool>();
     fuzzy_test_tuple<bool, short>();
@@ -46,6 +63,8 @@ int main(){
     test_offset_table();
 
     test_get();
+
+    test_misaligned_address();
 
     return 0;
 }

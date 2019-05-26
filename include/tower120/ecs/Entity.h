@@ -5,78 +5,107 @@
 
 #include "util/heterogeneous_array.h"
 #include "util/monotonic_counter.h"
+#include "util/type_traits.h"
 
-//#include "Component.h"
+#include "detail/common.h"
+#include "ComponentBase.h"
 
 namespace tower120::ecs{
 
     using EntityType = unsigned short;
 
-
-    namespace detail::Entity {
-        template <typename...>
-        inline constexpr auto is_unique = std::true_type{};
-
-        template <typename T, typename... Rest>
-        inline constexpr auto is_unique<T, Rest...> = std::bool_constant<
-            (!std::is_same_v<T, Rest> && ...) && is_unique<Rest...>
-        >{};
-    }
-
-
-
-    class EntityBase {
+    class IEntity {
     private:
-        void* m_components;
+        void* m_components_ptr;     // switch to offsetof whenever possible
     public:
         const EntityType type_id;
 
     protected:
-        using offset_t = unsigned short;
-        explicit EntityBase(EntityType type_id)
-            : type_id(type_id)
+        explicit IEntity(EntityType type_id, void* m_components_ptr) noexcept
+            : m_components_ptr(m_components_ptr)
+            , type_id(type_id)
         {}
+
+        // TODO : update EntityBase::m_components on move / copy
+        IEntity(const IEntity&) = delete;
+        IEntity(IEntity&&) = delete;
 
     public:
         template<class Component>
-        Component& component() noexcept {
-             const offset_t offset = Component::offset_for_entity[type_id];
-             void* address = (std::byte*)m_components + offset;
-             return *reinterpret_cast<Component*>(address);
+        Component* get_if() noexcept {
+            static_assert(is_component<Component>, "Components only!");
+
+            if (Component::offset_for_entity.size() <= type_id) return nullptr;
+            const auto offset = Component::offset_for_entity[type_id];
+            if (offset < 0) return nullptr;
+
+            void* address = static_cast<std::byte*>(m_components_ptr) + offset;
+            return reinterpret_cast<Component*>(address);
         }
 
-        //ComponentBase* (*get_component)(EntityBase* entity, ComponenType type);
+        template<class Component>
+        Component& get() noexcept {
+            static_assert(is_component<Component>, "Components only!");
+
+            const auto offset = Component::offset_for_entity[type_id];
+            assert(offset >= 0);
+
+            void* address = static_cast<std::byte*>(m_components_ptr) + offset;
+            return *reinterpret_cast<Component*>(address);
+        }
     };
 
 
     template <class ...Components>
-    class Entity final : public EntityBase {
-        static_assert(detail::Entity::is_unique<Components...>, "Components must be unique for Entity");
+    class Entity final : public IEntity {
+        static_assert(sizeof...(Components) > 0, "Must be at least one Component.");
+        static_assert(util::is_unique<Components...>, "Components must be unique.");
+        static_assert((is_component<Components> && ...), "Components only!");
 
-         util::heterogeneous_array<Components...> m_components;
+        util::heterogeneous_array<Components...> m_components;
+
+        template<class Closure, std::size_t ...I>
+        static void foreach_component_(Closure&& closure, std::index_sequence<I...>){
+            (closure(std::integral_constant<std::size_t, I>{}), ...);
+        }
+        template<class Closure>
+        static void foreach_component(Closure &&closure){
+            foreach_component_(std::forward<Closure>(closure), std::index_sequence_for<Components...>{});
+        }
+
+        template<int I>
+        static void register_entity() noexcept {
+            using Component = util::NthType<I, Components...>;
+            constexpr const auto offset = decltype(m_components)::offset_table[I];
+            static_assert(offset < std::numeric_limits<detail::entity_offset_t>::max(), "Entity size too big. Increase entity_offset_t.");
+
+            Component::offset_for_entity.resize(type_id+1, -1);
+            Component::offset_for_entity[type_id] = offset;
+        }
+
+        static void register_entities() noexcept {
+            foreach_component([&](auto I){ register_entity<I.value>(); });
+        }
 
     public:
-        inline const static EntityType type_id = util::monotonic_counter<EntityType, EntityBase>::get();
+        inline const static EntityType type_id = util::monotonic_counter<EntityType, IEntity>::get();
 
-        // TODO: register entity
-
-        /**
-         *
-         * offsetof(EntityBase, m_components)
-         *
-         */
+        template<class Component>
+        Component& get() noexcept {
+            static_assert(util::has_type<Component, Components...>, "Component does not exists in Entity.");
+            constexpr const int N = util::type_index<Component, Components...>;
+            return m_components.template get<Component>(N);
+        }
 
         Entity() noexcept
-            : EntityBase(type_id)
+            : IEntity(type_id, &m_components)
         {
-            std::ptrdiff_t base_offset = this - &m_components;
+            register_entities();
         }
 
         // TODO : update EntityBase::m_components on move / copy
-
+        Entity(const Entity&) = delete;
+        Entity(Entity&&) = delete;
     };
-
-
-    // components[component_type_id][entity_type_id] = offset
 
 }
