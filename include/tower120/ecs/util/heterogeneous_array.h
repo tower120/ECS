@@ -52,7 +52,6 @@ namespace tower120::ecs::util{
     public:
         using offset_table_t = std::array<std::size_t, sizeof...(Elements)>;
         using typeindex_table_t = std::array<std::type_index, sizeof...(Elements)>;
-
     private:
         template<int N>
         using ElementN = NthType<N, Elements...>;
@@ -75,15 +74,16 @@ namespace tower120::ecs::util{
         inline static const typeindex_table_t typeindex_table {
             std::type_index(typeid(Elements))...
         };
-
+    private:
         static const constexpr std::size_t storage_size =
             detail::heterogeneous_array::apply_alignment(
                 offset_table[last_element_id] + sizeof(LastElement),
                 detail::heterogeneous_array::max_align<Elements...>
             );
-
+    public:
+        using Storage = std::array<std::byte, storage_size>;
     private:
-        std::byte storage[storage_size];
+        Storage storage;
 
         template<class Closure, std::size_t ...I>
         void foreach_element_(Closure&& closure, std::index_sequence<I...>){
@@ -110,6 +110,9 @@ namespace tower120::ecs::util{
         // TODO : move ctr / copy ctr
         heterogeneous_array(const heterogeneous_array&) = delete;
         heterogeneous_array(heterogeneous_array&&) = delete;
+
+        Storage& data(){ return storage; }
+        const Storage& data() const { return storage; }
 
         template<class T>
         constexpr T& get(std::size_t index){

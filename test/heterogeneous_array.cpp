@@ -14,13 +14,13 @@ void fuzzy_test_tuple(){
     /*std::cout
         << Array::storage_size << " "
         << sizeof(Tuple) << std::endl;*/
-    REQUIRE( Array::storage_size == sizeof(Tuple) );
+    REQUIRE( Array().data().size() == sizeof(Tuple) );
 }
 
 void test_offset_table(){
     using Array = heterogeneous_array<bool, short, void* , short, bool, bool>;
 
-    REQUIRE(Array::storage_size == 24);
+    REQUIRE(Array().data().size() == 24);
     REQUIRE_EQUAL(Array::offset_table, {0, 2, 8, 16, 18, 19});
 }
 
