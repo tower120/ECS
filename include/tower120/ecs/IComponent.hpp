@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "detail/common.h"
+#include "tower120/ecs/detail/common.hpp"
 
 namespace tower120::ecs{
 

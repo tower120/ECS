@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
-#include "util/monotonic_counter.h"
-#include "IComponent.h"
+#include "tower120/ecs/util/monotonic_counter.hpp"
+#include "IComponent.hpp"
 
 namespace tower120::ecs{
     template<class Derived>

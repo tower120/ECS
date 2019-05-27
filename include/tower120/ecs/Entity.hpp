@@ -6,12 +6,12 @@
 #include <range/v3/view/transform.hpp>
 
 #include "util/span.hpp"
-#include "util/heterogeneous_array.h"
-#include "util/monotonic_counter.h"
-#include "util/type_traits.h"
+#include "tower120/ecs/util/heterogeneous_array.hpp"
+#include "tower120/ecs/util/monotonic_counter.hpp"
+#include "tower120/ecs/util/type_traits.hpp"
 
-#include "detail/common.h"
-#include "IComponent.h"
+#include "tower120/ecs/detail/common.hpp"
+#include "IComponent.hpp"
 
 namespace tower120::ecs{
 

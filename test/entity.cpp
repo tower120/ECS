@@ -1,5 +1,5 @@
-#include <tower120/ecs/Entity.h>
-#include <tower120/ecs/Component.h>
+#include <tower120/ecs/Entity.hpp>
+#include <tower120/ecs/Component.hpp>
 
 #include "test_utils.h"
 

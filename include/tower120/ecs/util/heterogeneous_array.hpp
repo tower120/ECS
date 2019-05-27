@@ -7,7 +7,7 @@
 #include <typeindex>
 #include <cassert>
 
-#include "type_traits.h"
+#include "type_traits.hpp"
 
 namespace tower120::ecs::util{
     namespace detail::heterogeneous_array{

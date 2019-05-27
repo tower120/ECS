@@ -1,4 +1,4 @@
-#include <tower120/ecs/util/heterogeneous_array.h>
+#include <tower120/ecs/util/heterogeneous_array.hpp>
 
 #include "test_utils.h"
 
