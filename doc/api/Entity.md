@@ -1,4 +1,6 @@
 ```cpp
+/*type*/ EntityType;
+
 class IEntity {
 public:
     const EntityType type_id;
