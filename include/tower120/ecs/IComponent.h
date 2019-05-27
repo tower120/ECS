@@ -7,21 +7,21 @@ namespace tower120::ecs{
 
     using ComponentType = unsigned short;
 
-    class ComponentBase{
+    class IComponent{
     private:
         const ComponentType type_id;
 
     protected:
-        explicit ComponentBase(ComponentType type_id) : type_id(type_id) {}
+        explicit IComponent(ComponentType type_id) : type_id(type_id) {}
 
     public:
-        friend ComponentType type_id(const ComponentBase& component){
+        friend ComponentType type_id(const IComponent& component){
             return component.type_id;
         }
     };
 
     template<class Component>
-    const constexpr bool is_component = std::is_base_of_v<ComponentBase, Component>;
+    const constexpr bool is_component = std::is_base_of_v<IComponent, Component>;
 
     namespace detail{
         using EnityOffsets = std::vector<detail::entity_offset_t>;

@@ -15,7 +15,11 @@ public:
     
     // ??
     // fast, two indirections    
-    // IComponent* get(ComponentType) noexcept;    
+    // IComponent* get(ComponentType) noexcept;
+    
+    // virtually no-op
+    // Range< pair<component_type_id, IComponent&> >
+    auto get_all() noexcept;
 }
 ```
 

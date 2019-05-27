@@ -126,7 +126,9 @@ namespace tower120::ecs::util{
         ~heterogeneous_array(){
             foreach_element([&](auto I) {
                 using Element = ElementN<I.value>;
-                get<Element>(I.value).~Element();
+                if constexpr (!std::is_trivially_destructible_v<Element>) {
+                    get<Element>(I.value).~Element();
+                }
             });
         };
     };

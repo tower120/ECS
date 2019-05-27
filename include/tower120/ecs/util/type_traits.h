@@ -25,7 +25,7 @@ namespace tower120::ecs::util {
                 static_assert(sizeof...(Ts) > 0, "Type not found.");
                 return type_index<R, Ts...>(std::integral_constant<int, I+1>{});
             }
-        };
+        }
     }
     template<typename T, typename... Ts>
     constexpr int type_index = detail::type_index<T, Ts...>();

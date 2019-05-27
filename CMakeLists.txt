@@ -13,6 +13,7 @@ elseif(SAN STREQUAL "MSAN")
 endif()
 
 include_directories(include)
+include_directories(third_party/range-v3/include)
 
 # ----- BENCHMARK -------
 

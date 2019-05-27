@@ -34,6 +34,14 @@ void test_get(E& entity){
     REQUIRE(entity.template get<Color>().b == 30);
 }
 
+void test_get_all(IEntity& entity){
+    auto components = entity.get_all();
+    REQUIRE(components[0].first  == type_id<Position>());
+    REQUIRE(&components[0].second == &entity.template get<Position>());
+    REQUIRE(components[1].first  == type_id<Color>());
+    REQUIRE(&components[1].second == &entity.template get<Color>());
+}
+
 void test_Entity_get(){
     PixelEntity pixel;
     IEntity& entity = pixel;
@@ -41,6 +49,7 @@ void test_Entity_get(){
     REQUIRE(!entity.get_if<Other>());
     test_get(entity);
     test_get(pixel);
+    test_get_all(entity);
 }
 
 int main(){

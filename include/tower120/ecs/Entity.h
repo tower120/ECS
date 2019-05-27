@@ -3,27 +3,39 @@
 #include <tuple>
 #include <array>
 
+#include <range/v3/view/transform.hpp>
+
+#include "util/span.hpp"
 #include "util/heterogeneous_array.h"
 #include "util/monotonic_counter.h"
 #include "util/type_traits.h"
 
 #include "detail/common.h"
-#include "ComponentBase.h"
+#include "IComponent.h"
 
 namespace tower120::ecs{
 
     using EntityType = unsigned short;
 
     class IEntity {
-    private:
-        void* m_components_ptr;     // switch to offsetof whenever possible
     public:
         const EntityType type_id;
-
     protected:
-        explicit IEntity(EntityType type_id, void* m_components_ptr) noexcept
-            : m_components_ptr(m_components_ptr)
-            , type_id(type_id)
+        using ComponentTypeOffset = std::pair<ComponentType, std::size_t>;
+        using ComponentsOffsetTableSpan = nonstd::span<const ComponentTypeOffset>;
+    private:
+        // switch to offsetof whenever possible
+        void* m_components_ptr;
+        ComponentsOffsetTableSpan m_components_offset_table;
+    protected:
+        IEntity(
+            EntityType type_id,
+            void* m_components_ptr,
+            ComponentsOffsetTableSpan m_components_offset_table
+        ) noexcept
+            : type_id(type_id)
+            , m_components_ptr(m_components_ptr)
+            , m_components_offset_table(m_components_offset_table)
         {}
 
         // TODO : update EntityBase::m_components on move / copy
@@ -35,8 +47,8 @@ namespace tower120::ecs{
         Component* get_if() noexcept {
             static_assert(is_component<Component>, "Components only!");
 
-            if (Component::offset_for_entity.size() <= type_id) return nullptr;
-            const auto offset = Component::offset_for_entity[type_id];
+            if (Component::offset_for_entity().size() <= type_id) return nullptr;
+            const auto offset = Component::offset_for_entity()[type_id];
             if (offset < 0) return nullptr;
 
             void* address = static_cast<std::byte*>(m_components_ptr) + offset;
@@ -47,11 +59,19 @@ namespace tower120::ecs{
         Component& get() noexcept {
             static_assert(is_component<Component>, "Components only!");
 
-            const auto offset = Component::offset_for_entity[type_id];
+            const auto offset = Component::offset_for_entity()[type_id];
             assert(offset >= 0);
 
             void* address = static_cast<std::byte*>(m_components_ptr) + offset;
             return *reinterpret_cast<Component*>(address);
+        }
+
+        auto get_all() noexcept /* -> Range< pair<component_type_id, IComponent&> > */{
+            return m_components_offset_table | ranges::view::transform(
+                [&](const ComponentTypeOffset& in) -> std::pair<ComponentType, IComponent&>{
+                    void* address = static_cast<std::byte*>(m_components_ptr) + in.second;
+                    return {in.first, *static_cast<IComponent*>(address)};
+                });
         }
     };
 
@@ -62,7 +82,8 @@ namespace tower120::ecs{
         static_assert(util::is_unique<Components...>, "Components must be unique.");
         static_assert((is_component<Components> && ...), "Components only!");
 
-        util::heterogeneous_array<Components...> m_components;
+        template<int I>
+        using ComponentN = util::NthType<I, Components...>;
 
         template<class Closure, std::size_t ...I>
         static void foreach_component_(Closure&& closure, std::index_sequence<I...>){
@@ -73,20 +94,37 @@ namespace tower120::ecs{
             foreach_component_(std::forward<Closure>(closure), std::index_sequence_for<Components...>{});
         }
 
+        util::heterogeneous_array<Components...> m_components;
+
+        using ComponentsOffsetTable = std::array<ComponentTypeOffset, sizeof...(Components) >;
+        template<std::size_t ...I>
+        static ComponentsOffsetTable make_components_offset_table(std::index_sequence<I...>){
+            return
+            { std::make_pair(
+                ComponentN<I>::type_id,    // non-constxepr!
+                decltype(m_components)::offset_table[I]
+            )... };
+        }
+        inline static const ComponentsOffsetTable m_components_offset_table = make_components_offset_table(std::index_sequence_for<Components...>{});
+
         template<int I>
         static void register_entity() noexcept {
-            using Component = util::NthType<I, Components...>;
+            using Component = ComponentN<I>;
             constexpr const auto offset = decltype(m_components)::offset_table[I];
             static_assert(offset < std::numeric_limits<detail::entity_offset_t>::max(), "Entity size too big. Increase entity_offset_t.");
 
-            Component::offset_for_entity.resize(type_id+1, -1);
-            Component::offset_for_entity[type_id] = offset;
+            Component::offset_for_entity().resize(type_id+1, -1);
+            Component::offset_for_entity()[type_id] = offset;
         }
 
         static void register_entities() noexcept {
             foreach_component([&](auto I){ register_entity<I.value>(); });
         }
 
+        static inline const bool registered = [](){
+            register_entities();
+            return true;
+        }();
     public:
         inline const static EntityType type_id = util::monotonic_counter<EntityType, IEntity>::get();
 
@@ -98,9 +136,10 @@ namespace tower120::ecs{
         }
 
         Entity() noexcept
-            : IEntity(type_id, &m_components)
+            : IEntity(type_id, &m_components, m_components_offset_table)
         {
-            register_entities();
+            // register before use
+            (void)registered;
         }
 
         // TODO : update EntityBase::m_components on move / copy
