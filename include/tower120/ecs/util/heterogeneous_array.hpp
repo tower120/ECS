@@ -24,12 +24,12 @@ namespace tower120::ecs::util{
             if constexpr (I==N){
                 return pos;
             } else {
-                using Element = NthType<I, Elements...>;
+                using Element = TypeN<I, Elements...>;
 
                 std::size_t next_pos = pos + sizeof(Element);
 
                 if constexpr (I < sizeof...(Elements)-1){
-                    using NextElement = NthType<I+1, Elements...>;
+                    using NextElement = TypeN<I+1, Elements...>;
                     next_pos = apply_alignment(next_pos, alignof(NextElement) );
                 }
 
@@ -54,10 +54,10 @@ namespace tower120::ecs::util{
         using typeindex_table_t = std::array<std::type_index, sizeof...(Elements)>;
     private:
         template<int N>
-        using ElementN = NthType<N, Elements...>;
+        using ElementN = TypeN<N, Elements...>;
 
         static const constexpr std::size_t last_element_id = sizeof...(Elements)-1;
-        using LastElement = NthType<last_element_id, Elements...>;
+        using LastElement = TypeN<last_element_id, Elements...>;
 
         template<std::size_t ...I>
         static constexpr offset_table_t get_offset_table(std::index_sequence<I...>){

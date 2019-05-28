@@ -19,7 +19,7 @@ template<class Component>
 ComponentType type_id();
 ```
 
-Ussage:
+Usage:
 
 ```cpp
 struct Color : Component<Color>{

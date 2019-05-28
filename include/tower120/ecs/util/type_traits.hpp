@@ -1,5 +1,8 @@
 #pragma once
 
+#include <tuple>
+#include <variant>
+
 namespace tower120::ecs::util {
     // type_wrapper
     template<class T>
@@ -7,9 +10,21 @@ namespace tower120::ecs::util {
         using type = T;
     };
 
-    // NthType
-    template<int N, typename... Ts>
-    using NthType = typename std::tuple_element<N, std::tuple<Ts...>>::type;
+    // static_for
+    namespace detail{
+        template<std::size_t ...Is, class Fn>
+        void static_for(std::index_sequence<Is...>, Fn&& fn){
+            ( fn( std::integral_constant<std::size_t, Is>{} ), ... );
+        }
+    }
+    template<std::size_t N, class Fn>
+    void static_for(Fn&& fn){
+        detail::static_for( std::make_index_sequence<N>{}, std::forward<Fn>(fn) );
+    }
+
+    // TypeN
+    template<std::size_t N, typename... Ts>
+    using TypeN = typename std::tuple_element<N, std::tuple<Ts...>>::type;
 
     // has_type
     template<typename T, typename... Ts>
