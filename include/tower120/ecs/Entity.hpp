@@ -15,7 +15,7 @@ namespace tower120::ecs{
     template <class ...Components>
     class Entity final : public IEntity {
         static_assert(sizeof...(Components) > 0, "Must be at least one Component.");
-        static_assert(util::is_unique<Components...>, "Components must be unique.");
+        static_assert(util::all_unique<Components...>, "Components must be unique.");
         static_assert((is_component<Components> && ...), "Components only!");
 
         template<int I>

@@ -38,17 +38,16 @@ int main(){
     Registry registry;
     registry.update(entities | view::indirect);
 
-    /*registry.select<Other>([](Other& ){
-
-    });*/
-
-    registry.select<Color>([](Color& color){
+    // TODO : `select` accepts tuple too
+    auto range = registry.select<Color>();
+    for(auto [color] : range){
+        static_assert(std::is_same_v<decltype(color), Color&>);
         std::cout
             << (int)color.r
             << (int)color.g
             << (int)color.b
         << std::endl;
-    });
+    }
 
     return 0;
 }

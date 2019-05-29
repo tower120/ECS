@@ -45,11 +45,81 @@ namespace tower120::ecs::util {
     template<typename T, typename... Ts>
     constexpr int type_index = detail::type_index<T, Ts...>();
 
-    // is_unique
+    // all_unique
     template <typename...>
-    constexpr bool is_unique = true;
+    constexpr bool all_unique = true;
 
     template <typename T, typename... Rest>
-    constexpr bool is_unique<T, Rest...> =
-        (!std::is_same_v<T, Rest> && ...) && is_unique<Rest...>;
+    constexpr bool all_unique<T, Rest...> =
+        (!std::is_same_v<T, Rest> && ...) && all_unique<Rest...>;
+
+    // all_same
+    template <typename...>
+    constexpr bool all_same = true;
+
+    template <typename T, typename... Rest>
+    constexpr bool all_same<T, Rest...> =
+        (std::is_same_v<T, Rest> && ...) && all_same<Rest...>;
+
+
+    // tuple_array
+    namespace detail{
+        template<class T, std::size_t>
+        using ident_t = T;
+
+        template<class T, template<class...> class Tuple, class S>
+        struct tuple_array;
+
+        template<class T, template<class...> class Tuple, std::size_t ...Is>
+        struct tuple_array<T, Tuple, std::index_sequence<Is...>>{
+            using type = Tuple<detail::ident_t<T, Is>...>;
+        };
+    }
+    template<class T, std::size_t N, template<class...> class Tuple = std::tuple>
+    using tuple_array = typename detail::tuple_array<T, Tuple, std::make_index_sequence<N>>::type;
+
+    // is_tuple_array
+    namespace detail{
+        template<class Tuple>
+        struct is_tuple_array {
+            static constexpr bool value = false;
+        };
+        template<class... Args>
+        struct is_tuple_array< std::tuple<Args...> > {
+            static constexpr bool value = all_same<Args...>;
+        };
+    }
+    template <typename Tuple>
+    constexpr bool is_tuple_array = detail::is_tuple_array<Tuple>::value;
+
+    // tuple_array_accumulate
+    template<class TupleArray, class T, class Op>
+    constexpr T tuple_array_accumulate(TupleArray& tuple_array, T init, Op&& op){
+        static_assert(is_tuple_array<TupleArray>);
+
+        static_for<std::tuple_size_v<TupleArray>>([&](auto n){
+            init = op(std::move(init), std::get<n.value>(tuple_array));
+        });
+
+        return init;
+    }
+
+    // tuple_array_max
+    /*template<class TupleArray, class Proj = ranges::ident>
+    constexpr auto tuple_array_max(TupleArray& tuple_array, Proj proj = Proj{}){
+        static_assert(is_tuple_array<TupleArray>);
+        static_assert(std::tuple_size_v<TupleArray> > 0 );
+
+        using T = std::tuple_element_t<0, TupleArray>;
+        T max   = std::get<0>(tuple_array);
+
+        static_for<std::tuple_size_v<TupleArray>>([&](auto n){
+            if constexpr (n.value == 0) return; // skip first
+
+            constexpr const T& value = std::get<n.value>(tuple_array);
+            if (proj(value) > proj(max)) max = value;
+        });
+
+        return max;
+    }*/
 }

@@ -3,6 +3,8 @@
 #include <array>
 #include <functional>
 
+// NOT IN USE
+
 namespace tower120::ecs::util{
     namespace detail::apply_range{
         template<typename Fn, typename Range, std::size_t ...Is>
