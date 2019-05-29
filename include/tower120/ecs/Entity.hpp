@@ -37,7 +37,7 @@ namespace tower120::ecs{
         static ComponentsOffsetTable make_components_offset_table(std::index_sequence<I...>){
             return
             { std::make_pair(
-                ComponentN<I>::type_id,    // non-constxepr!
+                ComponentN<I>::type_id(),    // non-constxepr! static fiasco!
                 decltype(m_components)::offset_table[I]
             )... };
         }
@@ -77,6 +77,8 @@ namespace tower120::ecs{
             // register before use
             (void)registered;
         }
+
+        // TODO: cast operator
 
         // TODO : update EntityBase::m_components on move / copy
         Entity(const Entity&) = delete;

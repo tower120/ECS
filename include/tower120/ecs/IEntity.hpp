@@ -11,7 +11,7 @@ namespace tower120::ecs{
     using EntityType = unsigned short;
 
     class IEntity {
-        template <class...> friend  class Entity;
+        template <class...> friend class Entity;
     public:
         const EntityType type_id;
     private:
