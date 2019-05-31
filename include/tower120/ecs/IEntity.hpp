@@ -19,16 +19,14 @@ namespace tower120::ecs{
         using ComponentsOffsetTableSpan = nonstd::span<const ComponentTypeOffset>;
 
         // switch to offsetof whenever possible
-        void* m_components_ptr;
+        void* m_components_ptr;     // set directly from Entity
         ComponentsOffsetTableSpan m_components_offset_table;
 
         IEntity(
             EntityType type_id,
-            void* m_components_ptr,
             ComponentsOffsetTableSpan m_components_offset_table
         ) noexcept
             : type_id(type_id)
-            , m_components_ptr(m_components_ptr)
             , m_components_offset_table(m_components_offset_table)
         {}
 
@@ -46,7 +44,7 @@ namespace tower120::ecs{
             if (offset < 0) return nullptr;
 
             void* address = static_cast<std::byte*>(m_components_ptr) + offset;
-            return reinterpret_cast<Component*>(address);
+            return static_cast<Component*>(address);
         }
 
         template<class Component>
@@ -57,7 +55,7 @@ namespace tower120::ecs{
             assert(offset >= 0);
 
             void* address = static_cast<std::byte*>(m_components_ptr) + offset;
-            return *reinterpret_cast<Component*>(address);
+            return *static_cast<Component*>(address);
         }
 
         auto get_all() noexcept /* -> Range< pair<component_type_id, IComponent&> > */{

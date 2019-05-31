@@ -11,11 +11,11 @@
 
 namespace tower120::ecs::util{
     namespace detail::heterogeneous_array{
-        constexpr std::size_t apply_alignment(const std::size_t pos, const std::size_t alignemnt){
-            if (pos % alignemnt == 0){
+        constexpr std::size_t apply_alignment(const std::size_t pos, const std::size_t alignment){
+            if (pos % alignment == 0){
                 return pos;
             } else {
-                return (pos / alignemnt) * alignemnt + alignemnt;
+                return (pos / alignment) * alignment + alignment;
             }
         }
 
@@ -101,7 +101,7 @@ namespace tower120::ecs::util{
                 using Element = ElementN<I.value>;
                 if constexpr (!std::is_trivially_default_constructible_v<Element>) {
                     void *address = &storage[offset_table[I]];
-                    new(reinterpret_cast<Element *>(address)) Element();
+                    new(static_cast<Element*>(address)) Element();
                 }
             });
         }
@@ -120,7 +120,7 @@ namespace tower120::ecs::util{
 
             const std::size_t offset = offset_table[index];
             void* address = &storage[offset];
-            return *reinterpret_cast<T*>(address);
+            return *static_cast<T*>(address);
         }
 
         ~heterogeneous_array(){

@@ -13,12 +13,12 @@ namespace tower120::ecs::util {
     // static_for
     namespace detail{
         template<std::size_t ...Is, class Fn>
-        void static_for(std::index_sequence<Is...>, Fn&& fn){
+        constexpr void static_for(std::index_sequence<Is...>, Fn&& fn){
             ( fn( std::integral_constant<std::size_t, Is>{} ), ... );
         }
     }
     template<std::size_t N, class Fn>
-    void static_for(Fn&& fn){
+    constexpr void static_for(Fn&& fn){
         detail::static_for( std::make_index_sequence<N>{}, std::forward<Fn>(fn) );
     }
 

@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <array>
+#include <cstddef>
 
 #include <range/v3/view/transform.hpp>
 
@@ -72,10 +73,18 @@ namespace tower120::ecs{
         }
 
         Entity() noexcept
-            : IEntity(type_id, &m_components, m_components_offset_table)
+            : IEntity(type_id, m_components_offset_table)
         {
             // register before use
             (void)registered;
+            m_components_ptr = &m_components.data();
+
+            // make sure that IComponent and Component have the same address
+            // otherwise - make runtime offset table for IComponent
+            util::static_for<sizeof...(Components)>([&](auto n){
+                using Component = ComponentN<n.value>;
+                assert(&get<Component>() == static_cast<IComponent*>(&get<Component>()));
+            });
         }
 
         // TODO: cast operator
