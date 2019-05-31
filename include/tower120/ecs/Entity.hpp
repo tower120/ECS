@@ -19,6 +19,15 @@ namespace tower120::ecs{
         static_assert(util::all_unique<Components...>, "Components must be unique.");
         static_assert((is_component<Components> && ...), "Components only!");
 
+      public:
+        static EntityType type_id(){
+            const static EntityType type_id = util::monotonic_counter<EntityType, IEntity>::get();
+            return type_id;
+        }
+
+        //inline const static EntityType type_id = type_id_();
+
+      private:
         template<int I>
         using ComponentN = util::TypeN<I, Components...>;
 
@@ -42,7 +51,7 @@ namespace tower120::ecs{
                 decltype(m_components)::offset_table[I]
             )... };
         }
-        inline static const ComponentsOffsetTable m_components_offset_table = make_components_offset_table(std::index_sequence_for<Components...>{});
+        inline static const ComponentsOffsetTable m_components_offset_table_ = make_components_offset_table(std::index_sequence_for<Components...>{});
 
         template<int I>
         static void register_entity() noexcept {
@@ -50,8 +59,8 @@ namespace tower120::ecs{
             constexpr const auto offset = decltype(m_components)::offset_table[I];
             static_assert(offset < std::numeric_limits<detail::entity_offset_t>::max(), "Entity size too big. Increase entity_offset_t.");
 
-            Component::offset_for_entity().resize(type_id+1, -1);
-            Component::offset_for_entity()[type_id] = offset;
+            Component::offset_for_entity().resize(type_id()+1, -1);
+            Component::offset_for_entity()[type_id()] = offset;
         }
 
         static void register_entities() noexcept {
@@ -60,11 +69,12 @@ namespace tower120::ecs{
 
         static inline const bool registered = [](){
             register_entities();
+            m_components_offset_table().resize(type_id()+1);
+            m_components_offset_table()[type_id()] = m_components_offset_table_;
             return true;
         }();
-    public:
-        inline const static EntityType type_id = util::monotonic_counter<EntityType, IEntity>::get();
 
+    public:
         template<class Component>
         Component& get() noexcept {
             static_assert(util::has_type<Component, Components...>, "Component does not exists in Entity.");
@@ -73,14 +83,14 @@ namespace tower120::ecs{
         }
 
         Entity() noexcept
-            : IEntity(type_id, m_components_offset_table)
+            : IEntity(type_id())
         {
             // register before use
             (void)registered;
             m_components_ptr = &m_components.data();
 
             // make sure that IComponent and Component have the same address
-            // otherwise - make runtime offset table for IComponent
+            // otherwise - make runtime offset table for IComponent (once - on construction)
             util::static_for<sizeof...(Components)>([&](auto n){
                 using Component = ComponentN<n.value>;
                 assert(&get<Component>() == static_cast<IComponent*>(&get<Component>()));

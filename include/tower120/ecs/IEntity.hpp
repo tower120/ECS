@@ -18,16 +18,19 @@ namespace tower120::ecs{
         using ComponentTypeOffset = std::pair<ComponentType, std::size_t>;
         using ComponentsOffsetTableSpan = nonstd::span<const ComponentTypeOffset>;
 
+        static std::vector<ComponentsOffsetTableSpan>& m_components_offset_table(){
+            static std::vector<ComponentsOffsetTableSpan> m_components_offset_table_;
+            return m_components_offset_table_;
+        }
+
         // switch to offsetof whenever possible
         void* m_components_ptr;     // set directly from Entity
-        ComponentsOffsetTableSpan m_components_offset_table;
 
-        IEntity(
-            EntityType type_id,
-            ComponentsOffsetTableSpan m_components_offset_table
-        ) noexcept
+        // can be get from static table by type_id
+        //ComponentsOffsetTableSpan m_components_offset_table;
+
+        IEntity(EntityType type_id) noexcept
             : type_id(type_id)
-            , m_components_offset_table(m_components_offset_table)
         {}
 
         // TODO : update EntityBase::m_components on move / copy
@@ -59,7 +62,7 @@ namespace tower120::ecs{
         }
 
         auto get_all() noexcept /* -> Range< pair<component_type_id, IComponent&> > */{
-            return m_components_offset_table | ranges::view::transform(
+            return m_components_offset_table()[type_id] | ranges::view::transform(
                 [&](const ComponentTypeOffset& in) -> std::pair<ComponentType, IComponent&>{
                     void* address = static_cast<std::byte*>(m_components_ptr) + in.second;
                     assert(in.first == tower120::ecs::type_id(*static_cast<IComponent*>(address)));

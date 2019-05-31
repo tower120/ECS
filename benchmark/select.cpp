@@ -30,12 +30,14 @@ struct ColorComponent : Component<ColorComponent>{
     unsigned char b = 0;
 };
 
+struct EmptyComponent : Component<EmptyComponent>{};
+
 //using ColorComponent = Component<Color>;
 
-using PixelEntity = Entity<PositionComponent, ColorComponent>;
+using PixelEntity = Entity<PositionComponent, ColorComponent, EmptyComponent>;
 
 struct PixelClass : Position, Color{
-    std::byte p[50];    // make even size
+    std::byte p[32];    // make size even
 };
 
 int main() {
@@ -46,7 +48,7 @@ int main() {
     std::vector<std::unique_ptr<PixelEntity>> entities;
 
     // 0. sizes
-    if (false){
+    if (true){
         std::cout << "sizeof(IComponent) "  << sizeof(IComponent) << std::endl;
         std::cout << "sizeof(IEntity) "  << sizeof(IEntity) << std::endl;
         std::cout << "sizeof(Color) "  << sizeof(Color) << std::endl;
@@ -76,7 +78,7 @@ int main() {
 
     // 2. Entity access
     {
-        std::cout << "class : "/* << std::endl*/;
+        std::cout << "class : ";
 
         std::size_t sum = 0;
         auto t = benchmark(times, [&](){
@@ -91,7 +93,7 @@ int main() {
         std::cout << sum << " "  << t << std::endl;
     }
     {
-        std::cout << "entity direct access : "/* << std::endl*/;
+        std::cout << "entity direct access : ";
 
         std::size_t sum = 0;
         auto t = benchmark(times, [&](){
@@ -106,7 +108,7 @@ int main() {
         std::cout << sum << " "  << t << std::endl;
     }
     {
-        std::cout << "entity type erasured access : "/* << std::endl*/;
+        std::cout << "entity type erasured access : ";
 
         std::size_t sum = 0;
         auto t = benchmark(times, [&](){
@@ -127,19 +129,44 @@ int main() {
         Registry registry;
         registry.update(entities | view::indirect);
 
-        std::cout << "registry access : "/* << std::endl*/;
-
-        std::size_t sum = 0;
-        auto t = benchmark(times, [&](){
-          for (auto [color] : registry.select<ColorComponent>()){
-              sum += color.r;
-              sum += color.g;
-              sum += color.b;
-          }
-        });
-
-        std::cout << sum << " "  << t << std::endl;
+        {
+            std::cout << "registry access 1 Component : ";
+            std::size_t sum = 0;
+            auto t = benchmark(times, [&](){
+              for (auto [color] : registry.select<ColorComponent>()){
+                  sum += color.r;
+                  sum += color.g;
+                  sum += color.b;
+              }
+            });
+            std::cout << sum << " "  << t << std::endl;
+        }
+        {
+            std::cout << "registry access 2 Components : ";
+            std::size_t sum = 0;
+            auto t = benchmark(times, [&](){
+              for (auto [_, color] : registry.select<PositionComponent, ColorComponent>()){
+                  sum += color.r;
+                  sum += color.g;
+                  sum += color.b;
+              }
+            });
+            std::cout << sum << " "  << t << std::endl;
+        }
+        {
+            std::cout << "registry access 3 Components : ";
+            std::size_t sum = 0;
+            auto t = benchmark(times, [&](){
+              for (auto [_, _2, color] : registry.select<EmptyComponent, PositionComponent, ColorComponent>()){
+                  sum += color.r;
+                  sum += color.g;
+                  sum += color.b;
+              }
+            });
+            std::cout << sum << " "  << t << std::endl;
+        }
     }
+
 
     return 0;
 }
