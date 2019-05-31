@@ -19,15 +19,16 @@ namespace tower120::ecs{
         static_assert(util::all_unique<Components...>, "Components must be unique.");
         static_assert((is_component<Components> && ...), "Components only!");
 
-      public:
-        static EntityType type_id(){
+        template<class T, std::enable_if_t<is_entity<T>, int>>
+        friend EntityType type_id() noexcept;
+        template<class T, std::enable_if_t<is_entity<T>, int>>
+        friend EntityType type_id(const T&) noexcept;
+
+        static EntityType type_id() noexcept {
             const static EntityType type_id = util::monotonic_counter<EntityType, IEntity>::get();
             return type_id;
         }
 
-        //inline const static EntityType type_id = type_id_();
-
-      private:
         template<int I>
         using ComponentN = util::TypeN<I, Components...>;
 
@@ -44,7 +45,7 @@ namespace tower120::ecs{
 
         using ComponentsOffsetTable = std::array<ComponentTypeOffset, sizeof...(Components) >;
         template<std::size_t ...I>
-        static ComponentsOffsetTable make_components_offset_table(std::index_sequence<I...>){
+        static ComponentsOffsetTable make_components_offset_table(std::index_sequence<I...>) noexcept {
             return
             { std::make_pair(
                 ComponentN<I>::type_id(),    // non-constxepr!
@@ -104,4 +105,12 @@ namespace tower120::ecs{
         Entity(Entity&&) = delete;
     };
 
+    template<class T, std::enable_if_t<is_entity<T>, int> = 0>
+    EntityType type_id(const T&) noexcept {
+        return T::type_id();
+    }
+    template<class T, std::enable_if_t<is_entity<T>, int> = 0>
+    EntityType type_id() noexcept {
+        return T::type_id();
+    }
 }

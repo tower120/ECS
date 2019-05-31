@@ -12,13 +12,14 @@ namespace tower120::ecs{
 
     class IEntity {
         template <class...> friend class Entity;
-    public:
+        friend EntityType type_id(const IEntity&) noexcept;
+
         const EntityType type_id;
-    private:
+
         using ComponentTypeOffset = std::pair<ComponentType, std::size_t>;
         using ComponentsOffsetTableSpan = nonstd::span<const ComponentTypeOffset>;
 
-        static std::vector<ComponentsOffsetTableSpan>& m_components_offset_table(){
+        static std::vector<ComponentsOffsetTableSpan>& m_components_offset_table() noexcept {
             static std::vector<ComponentsOffsetTableSpan> m_components_offset_table_;
             return m_components_offset_table_;
         }
@@ -26,10 +27,7 @@ namespace tower120::ecs{
         // switch to offsetof whenever possible
         void* m_components_ptr;     // set directly from Entity
 
-        // can be get from static table by type_id
-        //ComponentsOffsetTableSpan m_components_offset_table;
-
-        IEntity(EntityType type_id) noexcept
+        explicit IEntity(EntityType type_id) noexcept
             : type_id(type_id)
         {}
 
@@ -73,4 +71,10 @@ namespace tower120::ecs{
         virtual ~IEntity() = default;
     };
 
+    EntityType type_id(const IEntity& entity) noexcept {
+        return entity.type_id;
+    }
+
+    template<class T>
+    const constexpr bool is_entity = std::is_base_of_v<IEntity, T>;
 }

@@ -3,8 +3,6 @@
 
 class IEntity {
 public:
-    const EntityType type_id;
-    
     // very fast, one indirection
     // return nullptr if no such Component
     template<class Component>
@@ -23,6 +21,8 @@ public:
     // Range< pair<component_type_id, IComponent&> >
     auto get_all() noexcept;
 }
+
+EntityType type_id(const IEntity&);
 ```
 
 ```cpp
@@ -36,4 +36,10 @@ public:
     template<class Component>
     Component& get() noexcept;
 }
+
+template<class Entity>
+EntityType type_id(const Entity&);
+
+template<class Entity>
+EntityType type_id();
 ```
