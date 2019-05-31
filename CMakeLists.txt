@@ -17,7 +17,7 @@ include_directories(third_party/range-v3/include)
 
 # ----- BENCHMARK -------
 
-#add_subdirectory(benchmark)
+add_subdirectory(benchmark)
 
 # ----- TEST -------
 

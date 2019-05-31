@@ -64,6 +64,7 @@ namespace tower120::ecs{
             return m_components_offset_table | ranges::view::transform(
                 [&](const ComponentTypeOffset& in) -> std::pair<ComponentType, IComponent&>{
                     void* address = static_cast<std::byte*>(m_components_ptr) + in.second;
+                    assert(in.first == tower120::ecs::type_id(*static_cast<IComponent*>(address)));
                     return {in.first, *static_cast<IComponent*>(address)};
                 });
         }

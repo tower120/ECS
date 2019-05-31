@@ -3,4 +3,4 @@ _add_test(test.entity entity.cpp)
 _add_test(test.registry registry.cpp)
 
 
-_add_test(test.entity_container entity_container.cpp)
+# _add_test(test.entity_container entity_container.cpp)

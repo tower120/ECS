@@ -7,11 +7,13 @@
 namespace tower120::ecs{
     class IEntity;
 
+    // Derived must have single inheritance!
     template<class Derived>
     class Component : public IComponent {
         friend IEntity;
         template<class...> friend class Entity;
         template<class, class> friend ComponentType type_id();
+        template<class T, class> friend ComponentType type_id(const T&);
 
         static ComponentType type_id(){
             const static ComponentType type_id = util::monotonic_counter<ComponentType, IComponent>::get();
@@ -28,12 +30,12 @@ namespace tower120::ecs{
         Component() noexcept
             : IComponent(type_id())
         {}
-
-        friend ComponentType type_id(const Component&){
-            return Component::type_id();
-        }
     };
 
+    template<class T, typename = std::enable_if_t< is_component<T> >>
+    ComponentType type_id(const T&){
+        return T::type_id();
+    }
     template<class T, typename = std::enable_if_t< is_component<T> >>
     ComponentType type_id(){
         return T::type_id();

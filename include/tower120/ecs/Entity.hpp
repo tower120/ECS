@@ -37,7 +37,7 @@ namespace tower120::ecs{
         static ComponentsOffsetTable make_components_offset_table(std::index_sequence<I...>){
             return
             { std::make_pair(
-                ComponentN<I>::type_id(),    // non-constxepr! static fiasco!
+                ComponentN<I>::type_id(),    // non-constxepr!
                 decltype(m_components)::offset_table[I]
             )... };
         }

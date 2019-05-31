@@ -26,7 +26,7 @@ namespace tower120::ecs{
         template<class ...> friend class RegistrySelectRange;
 
         // TODO: object pool, reuse ComponentList?
-        using ComponentList  = std::vector<std::pair<std::size_t, IComponent*>>;    // could be std::map<iterator, IComponent*>, for O(log(N)) mutations
+        using ComponentList  = std::vector<std::pair<std::size_t /*IEntity index*/, IComponent*>>;    // could be std::map<iterator, IComponent*>, for O(log(N)) mutations
         using ComponentTypes = std::unordered_map<ComponentType, ComponentList>;
         ComponentTypes component_types;
 
@@ -36,13 +36,16 @@ namespace tower120::ecs{
         template<class Rng>
         void update(Rng&& rng){
             component_types.clear();
+
             auto process_component = [&](std::size_t index, ComponentType component_type_id, IComponent& component){
                 ComponentList& components = component_types[component_type_id];
                 components.emplace_back(index, &component);
             };
+
             std::size_t index = 0;
             for(IEntity& entity : rng){
                 for(auto&&[component_type_id, component] : entity.get_all()){
+                    assert(component_type_id == type_id(component));
                     process_component(index, component_type_id, component);
                 }
                 index++;
@@ -56,14 +59,6 @@ namespace tower120::ecs{
         // void entity_erased(at index)
         // void entity_updated(at index)
         // void update(rng, from index = 0)     ??
-
-        template<class ...Components, class Closure, class ZipIterator, std::size_t ...Is>
-        void call_closure(Closure&& closure, ZipIterator& zip_iterator, std::index_sequence<Is...>){
-            closure(
-                *static_cast< util::TypeN<Is, Components...>* >(zip_iterator[Is]->second)
-                ...
-            );
-        }
 
         template<class ...Components>
         RegistrySelectRange<Components...> select() noexcept {

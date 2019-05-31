@@ -15,13 +15,14 @@ using namespace ranges;
 struct Other : Component<Other>{};
 
 struct Position : Component<Position>{
-    double x,y;
+    double x = 200;
+    double y = 100;
 };
 
 struct Color : Component<Color>{
-    unsigned char r = 0;
-    unsigned char g = 0;
-    unsigned char b = 0;
+    unsigned char r = 10;
+    unsigned char g = 20;
+    unsigned char b = 30;
 };
 
 using PixelEntity = Entity<Position, Color>;
@@ -31,17 +32,19 @@ int main(){
     entities.emplace_back(
         std::make_unique<PixelEntity>()
     );
-    entities.emplace_back(
+    /*entities.emplace_back(
         std::make_unique<PixelEntity>()
-    );
+    );*/
 
     Registry registry;
     registry.update(entities | view::indirect);
 
     // TODO : `select` accepts tuple too
-    auto range = registry.select<Color>();
-    for(auto [color] : range){
+    for(auto [color] : registry.select<Color>()){
         static_assert(std::is_same_v<decltype(color), Color&>);
+        IComponent& c = color;
+        REQUIRE(type_id(c) == type_id<Color>());
+        
         std::cout
             << (int)color.r
             << (int)color.g
