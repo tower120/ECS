@@ -18,24 +18,28 @@
 
 namespace tower120::ecs{
 
-    template<class ...Components>
+    template<bool, class ...>
     class RegistrySelectRange;
 
     // EntitiesIndex ?
     class Registry {
-        template<class ...> friend class RegistrySelectRange;
+        template<bool, class ...> friend class RegistrySelectRange;
 
         // TODO: object pool, reuse ComponentList?
         using ComponentList  = std::vector<std::pair<std::size_t /*IEntity index*/, IComponent*>>;    // could be std::map<iterator, IComponent*>, for O(log(N)) mutations
         using ComponentTypes = std::unordered_map<ComponentType, ComponentList>;
         ComponentTypes component_types;
 
-        // TODO: IEntity list std::vector<IEntity*>
+        std::vector<IEntity*> entities;
     public:
         // TODO : change to operator=, or constructor ?
         template<class Rng>
         void update(Rng&& rng){
             component_types.clear();
+            entities.clear();
+            if constexpr (ranges::range_cardinality<Rng>::value == ranges::cardinality::finite){
+                entities.reserve(rng.size());
+            }
 
             auto process_component = [&](std::size_t index, ComponentType component_type_id, IComponent& component){
                 ComponentList& components = component_types[component_type_id];
@@ -48,6 +52,7 @@ namespace tower120::ecs{
                     assert(component_type_id == type_id(component));
                     process_component(index, component_type_id, component);
                 }
+                entities.emplace_back(&entity);
                 index++;
             }
         }
@@ -60,18 +65,33 @@ namespace tower120::ecs{
         // void entity_updated(at index)
         // void update(rng, from index = 0)     ??
 
-        template<class ...Components>
-        RegistrySelectRange<Components...> select() noexcept {
-            return RegistrySelectRange<Components...>{*this};
+        template<class T, class ...Components>
+        auto select() noexcept {
+            if constexpr (std::is_same_v<T, IEntity>){
+                return RegistrySelectRange<true, Components...>{*this};
+            } else {
+                return RegistrySelectRange<false, T, Components...>{*this};
+            }
         }
+
+        // TODO : select<IEntity, Components>
+        // TODO : select<IEntity, Components>()
+        //  .keys<Key1, Key2, Key3>( Key1{} == 2, Key2{} != 3 )
+        //  .key_equal<Key1>(5)
+        //  .key_greater<Key1>(5)
+        //  .key_lesser<Key1>(5)
+        //  .key_greater_or_equal<Key1>(5)
+        //  .key_lesser_or_equal<Key1>(5)
     };
 
 
-    // TODO: optionally return IEntity
-    template<class ...Components>
+    template<bool ReturnEntities, class ...Components>
     class RegistrySelectRange
-        : public ranges::view_facade<RegistrySelectRange<Components...>>
+        : public ranges::view_facade<RegistrySelectRange<ReturnEntities, Components...>>
     {
+        static_assert(sizeof...(Components) > 0);
+        static_assert(util::all_unique<Components...>);
+
         friend ranges::range_access;
 
         using ComponentList = Registry::ComponentList;
@@ -83,10 +103,9 @@ namespace tower120::ecs{
         ComponentLists component_lists;
         ZipIterator zip_iterator;
 
-        bool the_end = false;
+        std::vector<IEntity*>* entities;
 
-        using value_type = std::tuple<Components...>;
-        using reference_type = ranges::common_tuple<Components&...>;
+        bool the_end = false;
 
         void increase_zip_iterator(){
             util::static_for<sizeof...(Components)>([&](auto n){
@@ -145,12 +164,23 @@ namespace tower120::ecs{
         // -------------------------------------------------------------------
         //          Cursor
         // -------------------------------------------------------------------
-        reference_type read() const {
-            return reference_type{
-                *static_cast<Components*>(
-                    std::get< util::type_index<Components, Components...> >(zip_iterator)->second
-                )...
-            };
+        auto read() const {
+            if constexpr(ReturnEntities) {
+                const auto index = std::get<0>(zip_iterator)->first;
+                IEntity& entity = *(*entities)[index];
+                return std::tuple<IEntity&, Components&...>{
+                    entity,
+                    *static_cast<Components*>(
+                        std::get< util::type_index<Components, Components...> >(zip_iterator)->second
+                    )...
+                };
+            } else {
+                return std::tuple<Components&...>{
+                    *static_cast<Components*>(
+                        std::get< util::type_index<Components, Components...> >(zip_iterator)->second
+                    )...
+                };
+            }
         }
 
         bool equal(ranges::default_sentinel_t) const {
@@ -196,8 +226,14 @@ namespace tower120::ecs{
     public:
         RegistrySelectRange() = default;
         explicit RegistrySelectRange(Registry& registry) noexcept
+            : entities(&registry.entities)
         {
             init(registry);
+        }
+
+        template<template<class...> class Container = std::vector>
+        auto collect(){
+            return Container<decltype(read())>{*this};
         }
     };
 
