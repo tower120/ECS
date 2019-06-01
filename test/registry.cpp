@@ -33,23 +33,35 @@ struct Depth : Component<Depth>{
 };
 
 int main(){
-    //        1  2  3  4
+    //        1  2  3  4  5  6
     // Pos    *  *     *
-    // Color  *     *  *
-    // Depth  *     *  *
+    // Color  *     *  *     *
+    // Depth  *     *  *  *  *
 
     std::vector<std::unique_ptr<IEntity>> entities;
+    // 1
     entities.emplace_back(
         std::make_unique<Entity<Position, Color, Depth>>()
     );
+    // 2
     entities.emplace_back(
         std::make_unique<Entity<Position>>()
     );
+    // 3
     entities.emplace_back(
         std::make_unique<Entity<Color, Depth>>()
     );
+    // 4
     entities.emplace_back(
         std::make_unique<Entity<Position, Color, Depth>>()
+    );
+    // 5
+    entities.emplace_back(
+        std::make_unique<Entity<Depth>>()
+    );
+    // 6
+    entities.emplace_back(
+        std::make_unique<Entity<Color, Depth>>()
     );
 
     Registry registry;
@@ -65,44 +77,47 @@ int main(){
     }
     {
         std::vector selection = registry.select<IEntity, Color>().collect();
-        REQUIRE(selection.size() == 3);
+        REQUIRE(selection.size() == 4);
         REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
         REQUIRE(&std::get<IEntity&>(selection[1]) == entities[2].get());
         REQUIRE(&std::get<IEntity&>(selection[2]) == entities[3].get());
+        REQUIRE(&std::get<IEntity&>(selection[3]) == entities[5].get());
     }
     {
         std::vector selection = registry.select<IEntity, Depth>().collect();
-        REQUIRE(selection.size() == 3);
+        REQUIRE(selection.size() == 5);
         REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
         REQUIRE(&std::get<IEntity&>(selection[1]) == entities[2].get());
+        REQUIRE(&std::get<IEntity&>(selection[2]) == entities[3].get());
         REQUIRE(&std::get<IEntity&>(selection[2]) == entities[3].get());
     }
     // 2 components
     {
         std::vector selection = registry.select<IEntity, Position, Color>().collect();
         REQUIRE(selection.size() == 2);
-        REQUIRE(&std::get<IEntity&>(selection[0]) == entities.front().get());
-        REQUIRE(&std::get<IEntity&>(selection[1]) == entities.back().get());
+        REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
+        REQUIRE(&std::get<IEntity&>(selection[1]) == entities[3].get());
     }
     {
         std::vector selection = registry.select<IEntity, Color, Depth>().collect();
-        REQUIRE(selection.size() == 3);
+        REQUIRE(selection.size() == 4);
         REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
         REQUIRE(&std::get<IEntity&>(selection[1]) == entities[2].get());
         REQUIRE(&std::get<IEntity&>(selection[2]) == entities[3].get());
+        REQUIRE(&std::get<IEntity&>(selection[3]) == entities[5].get());
     }
     {
         std::vector selection = registry.select<IEntity, Position, Depth>().collect();
         REQUIRE(selection.size() == 2);
-        REQUIRE(&std::get<IEntity&>(selection[0]) == entities.front().get());
-        REQUIRE(&std::get<IEntity&>(selection[1]) == entities.back().get());
+        REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
+        REQUIRE(&std::get<IEntity&>(selection[1]) == entities[3].get());
     }
     // 3 components
     {
         std::vector selection = registry.select<IEntity, Position, Color, Depth>().collect();
         REQUIRE(selection.size() == 2);
-        REQUIRE(&std::get<IEntity&>(selection[0]) == entities.front().get());
-        REQUIRE(&std::get<IEntity&>(selection[1]) == entities.back().get());
+        REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
+        REQUIRE(&std::get<IEntity&>(selection[1]) == entities[3].get());
     }
 
     return 0;

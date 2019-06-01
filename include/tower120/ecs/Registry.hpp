@@ -26,7 +26,7 @@ namespace tower120::ecs{
         template<bool, class ...> friend class RegistrySelectRange;
 
         // TODO: object pool, reuse ComponentList?
-        using ComponentList  = std::vector<std::pair<std::size_t /*IEntity index*/, IComponent*>>;    // could be std::map<iterator, IComponent*>, for O(log(N)) mutations
+        using ComponentList  = std::vector<std::pair<std::size_t /*IEntity index*/, IComponent*>>;    // could be std::map<??, IComponent*>, for O(log(N)) mutations
         using ComponentTypes = std::unordered_map<ComponentType, ComponentList>;
         ComponentTypes component_types;
 
