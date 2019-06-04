@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <range/v3/view/indirect.hpp>
+#include <range/v3/view/addressof.hpp>
 #include <range/v3/action/push_back.hpp>
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/iterator/insert_iterators.hpp>
@@ -32,7 +33,7 @@ struct Depth : Component<Depth>{
     double z = 300;
 };
 
-int main(){
+void test_update(){
     //        1  2  3  4  5  6
     // Pos    *  *     *
     // Color  *     *  *     *
@@ -119,6 +120,94 @@ int main(){
         REQUIRE(&std::get<IEntity&>(selection[0]) == entities[0].get());
         REQUIRE(&std::get<IEntity&>(selection[1]) == entities[3].get());
     }
+}
 
+void test_emplace_erase(){
+    std::vector<std::unique_ptr<IEntity>> entities;
+    Registry registry;
+
+    auto get_IEntity = [](auto& tuple) -> IEntity& {
+        return std::get<IEntity&>(tuple);
+    };
+
+    auto check_equal = [&](){
+        std::vector selection = registry.select<IEntity, Position, Color, Depth>().collect();
+        REQUIRE_EQUAL(
+            selection | view::transform(get_IEntity) | view::addressof,
+            entities | view::indirect | view::addressof);
+    };
+
+    // 1 (at the end)
+    {
+        entities.emplace_back(
+            std::make_unique<Entity<Position, Color, Depth>>()
+        );
+        registry.emplace(0, *entities[0]);
+        check_equal();
+    }
+
+    // 2 (at the end)
+    {
+        entities.emplace_back(
+            std::make_unique<Entity<Position, Color, Depth>>()
+        );
+        registry.emplace(1, *entities[1]);
+        check_equal();
+    }
+
+    // 3 (at the begin)
+    {
+        entities.emplace(entities.begin(),
+            std::make_unique<Entity<Position, Color, Depth>>()
+        );
+        registry.emplace(0, *entities[0]);
+        check_equal();
+    }
+
+    // 4 (in the middle)
+    {
+        entities.emplace(entities.begin()+1,
+            std::make_unique<Entity<Position, Color, Depth>>()
+        );
+        registry.emplace(1, *entities[1]);
+        check_equal();
+    }
+
+
+    // Erase
+    // 1 (at the end)
+    {
+        registry.erase(3);
+        entities.erase(entities.begin()+3);
+        check_equal();
+    }
+
+    // 2 (in the middle)
+    {
+        registry.erase(1);
+        entities.erase(entities.begin()+1);
+        check_equal();
+    }
+
+    // 3 (at the begin)
+    {
+        registry.erase(0);
+        entities.erase(entities.begin()+0);
+        check_equal();
+    }
+
+    // Insert (in the middle)
+    {
+        entities.emplace(entities.begin()+1,
+            std::make_unique<Entity<Position, Color, Depth>>()
+        );
+        registry.emplace(1, *entities[1]);
+        check_equal();
+    }
+}
+
+int main(){
+    test_update();
+    test_emplace_erase();
     return 0;
 }

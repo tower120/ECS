@@ -22,3 +22,9 @@ void REQUIRE_EQUAL(T&& rng, std::initializer_list<R>&& list){
     const bool equal = std::equal(rng.begin(), rng.end(), list.begin());
     REQUIRE(equal);
 }
+
+template<class T, class R>
+void REQUIRE_EQUAL(T&& rng, R&& list){
+    const bool equal = std::equal(rng.begin(), rng.end(), list.begin());
+    REQUIRE(equal);
+}

@@ -8,6 +8,7 @@
 #include <range/v3/view/indirect.hpp>
 #include <range/v3/view/map.hpp>
 #include <range/v3/view/facade.hpp>
+#include <range/v3/view/subrange.hpp>
 
 #include "util/type_traits.hpp"
 #include "util/binary_search.hpp"
@@ -57,12 +58,51 @@ namespace tower120::ecs{
             }
         }
 
+        void emplace(std::size_t before, IEntity& entity){
+            for(auto&&[component_type_id, component] : entity.get_all()){
+                assert(component_type_id == type_id(component));
+
+                ComponentList& components = component_types[component_type_id];
+                auto found = ranges::lower_bound(components.begin(), components.end(), before, ranges::less{},
+                    [](const auto& pair) -> decltype(auto) { return pair.first; });
+
+                // Update IEntity indexes
+                for (auto& [index, _] : ranges::subrange(found, components.end())){
+                    ++index;
+                }
+
+                components.emplace(found, before, &component);
+            }
+            entities.emplace(entities.begin() + before, &entity);
+        }
+
+        void erase(std::size_t index){
+            IEntity& entity = *entities[index];
+            for(auto&&[component_type_id, component] : entity.get_all()){
+                assert(component_type_id == type_id(component));
+
+                ComponentList& components = component_types[component_type_id];
+                auto optional_found = util::binary_search(components.begin(), components.end(), index, ranges::less{},
+                    [](const auto& pair) -> decltype(auto) { return pair.first; });
+                assert(optional_found);
+                auto found = *optional_found;
+
+                // Update IEntity indexes
+                for (auto& [index, _] : ranges::subrange(ranges::next(found), components.end())){
+                    --index;
+                }
+
+                components.erase(found);
+            }
+            entities.erase(entities.begin() + index);
+        }
+
         // make sense only for EntitiesStableContainer<vector<unique_ptr>>
         // With EntitiesList, EntitiesStableVector:
         //
         // void entity_inserted(after index, IEntity&)
         // void entity_erased(at index)
-        // void entity_updated(at index)
+        // void entity_updated(at index)   /   swap(index1, index2)
         // void update(rng, from index = 0)     ??
 
         template<class T, class ...Components>
